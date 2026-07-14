@@ -1,4 +1,4 @@
-# JERVIS Agent Installer v26.7.14.3
+# JERVIS Agent Installer v26.7.14.4
 
 Open one remote-host launcher, choose an agent, install it from the vendor's
 official source, and start working inside TMUX.
@@ -24,7 +24,7 @@ That is the entire command. The launcher asks:
                     ╠══════════════════════════════════════════════════════════════════════════════╣
                     ║   [R] Reload Display                     [X] Exit To TMUX Shell              ║
                     ╠══════════════════════════════════════════════════════════════════════════════╣
-                    ║   Host: REMOTE   ·   TMUX: Ready   ·   Version: v26.7.14.3                   ║
+                    ║   Host: REMOTE   ·   TMUX: Ready   ·   Version: v26.7.14.4                   ║
                     ╚══════════════════════════════════════════════════════════════════════════════╝
                         OPS 
 ```
@@ -85,7 +85,7 @@ curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/m
 Use the immutable release URL when reproducibility matters:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/v26.7.14.3/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/v26.7.14.4/install.sh | bash
 ```
 
 ## Repackage

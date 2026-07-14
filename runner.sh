@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # JERVIS Agent Installer runner
-# Version: v26.7.14.3
+# Version: v26.7.14.4
 # UI derived from the canonical JERVIS Launcher template v26.7.14.2.
 
 set -euo pipefail
 umask 077
 
-readonly RUNNER_VERSION="v26.7.14.3"
+readonly RUNNER_VERSION="v26.7.14.4"
 readonly DEFAULT_CODEX_INSTALLER_URL="https://chatgpt.com/codex/install.sh"
 readonly DEFAULT_CLAUDE_INSTALLER_URL="https://claude.ai/install.sh"
 readonly DEFAULT_AGY_INSTALLER_URL="https://antigravity.google/cli/install.sh"
@@ -205,6 +205,7 @@ enter_tmux() {
         -c "$START_DIR"
         env
         "${FORWARDED_ENV[@]}"
+        bash
         "$SCRIPT_PATH"
         --_tmux-child
         --session "$TMUX_SESSION_NAME"

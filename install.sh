@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # JERVIS Agent Installer bootstrap
-# Version: v26.7.14.3
+# Version: v26.7.14.4
 
 set -euo pipefail
 umask 077
 
-readonly BOOTSTRAP_VERSION="v26.7.14.3"
-readonly DEFAULT_RUNNER_URL="https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/v26.7.14.3/runner.sh"
-readonly DEFAULT_RUNNER_SHA256="5c52cb67678631e4a743190198bb88703becce2e6c17cb7f27e983863541d7de"
+readonly BOOTSTRAP_VERSION="v26.7.14.4"
+readonly DEFAULT_RUNNER_URL="https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/v26.7.14.4/runner.sh"
+readonly DEFAULT_RUNNER_SHA256="d87c191ea0634729a073cb384ccdbf5b85c62f2df16dc73bd5230e3695d6cd74"
 
 RUNNER_URL="${JERVIS_AGENT_RUNNER_URL:-$DEFAULT_RUNNER_URL}"
 RUNNER_SHA256="${JERVIS_AGENT_RUNNER_SHA256:-$DEFAULT_RUNNER_SHA256}"
-TTY_PATH="${JERVIS_AGENT_TTY:-/dev/tty}"
+TTY_PATH="${JERVIS_AGENT_TTY:-}"
 RUNNER_FILE=""
 
 error() {
@@ -67,6 +67,15 @@ if [[ "${actual_sha256,,}" != "${RUNNER_SHA256,,}" ]]; then
     error "Expected: ${RUNNER_SHA256,,}"
     error "Actual:   ${actual_sha256,,}"
     exit 1
+fi
+
+if [[ -z "$TTY_PATH" ]]; then
+    tty_name="$(ps -o tty= -p "$$" 2>/dev/null | tr -d '[:space:]' || true)"
+    case "$tty_name" in
+        ''|'?') TTY_PATH=/dev/tty ;;
+        /dev/*) TTY_PATH="$tty_name" ;;
+        *) TTY_PATH="/dev/$tty_name" ;;
+    esac
 fi
 
 if ! exec 3<> "$TTY_PATH"; then

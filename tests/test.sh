@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # JERVIS Agent Installer behavioral and render tests
-# Version: v26.7.14.3
+# Version: v26.7.14.4
 
 set -euo pipefail
 
@@ -178,6 +178,10 @@ case "$subcommand" in
     new-session)
         printf 'tmux-new=%s\n' "$*" >> "$TEST_LOG"
         while (( $# > 0 )); do
+            if [[ "$1" == bash && ( "${2:-}" == */runner.sh || "${2:-}" == */jervis-agent-runner.* ) ]]; then
+                TMUX='fake,1,0' "$@"
+                exit $?
+            fi
             if [[ "$1" == */runner.sh || "$1" == */jervis-agent-runner.* ]]; then
                 TMUX='fake,1,0' "$@"
                 exit $?
@@ -220,6 +224,13 @@ run_env=(
 )
 
 if bash -n "$BOOTSTRAP" "$RUNNER" "$0"; then ok 'Bash syntax'; else bad 'Bash syntax'; fi
+
+if grep -Fq 'ps -o tty= -p "$$"' "$BOOTSTRAP" \
+    && grep -Fq "TTY_PATH=\"/dev/\$tty_name\"" "$BOOTSTRAP"; then
+    ok 'resolves the concrete controlling TTY before starting TMUX'
+else
+    bad 'resolves the concrete controlling TTY before starting TMUX'
+fi
 
 : > "$TEST_LOG"
 TMUX='fake,1,0' "${run_env[@]}" "$RUNNER" --provider codex -- --sandbox workspace-write >/dev/null
