@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # JERVIS Agent Installer bootstrap
-# Version: v26.7.14.1
+# Version: v26.7.14.2
 
 set -euo pipefail
 umask 077
 
-readonly BOOTSTRAP_VERSION="v26.7.14.1"
-readonly DEFAULT_RUNNER_URL="https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/v26.7.14.1/runner.sh"
-readonly DEFAULT_RUNNER_SHA256="63d15c2232f9b1232e077b37dd2a88160f5756aaf6e1f0ecc2bd70a2c05a5b9a"
+readonly BOOTSTRAP_VERSION="v26.7.14.2"
+readonly DEFAULT_RUNNER_URL="https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/v26.7.14.2/runner.sh"
+readonly DEFAULT_RUNNER_SHA256="96507b939c9d61a1b7dca738348999564dc3ff9ab0c395be68b8605bdd618753"
 
 RUNNER_URL="${JERVIS_AGENT_RUNNER_URL:-$DEFAULT_RUNNER_URL}"
 RUNNER_SHA256="${JERVIS_AGENT_RUNNER_SHA256:-$DEFAULT_RUNNER_SHA256}"

@@ -1,4 +1,4 @@
-# JERVIS Agent Installer v26.7.14.1
+# JERVIS Agent Installer v26.7.14.2
 
 Open one remote-host launcher, choose an agent, install it from the vendor's
 official source, and start working inside TMUX.
@@ -24,7 +24,7 @@ That is the entire command. The launcher asks:
                     ╠══════════════════════════════════════════════════════════════════════════════╣
                     ║   [R] Reload Display                     [X] Exit To TMUX Shell              ║
                     ╠══════════════════════════════════════════════════════════════════════════════╣
-                    ║   Host: REMOTE   ·   TMUX: Ready   ·   Version: v26.7.14.1                   ║
+                    ║   Host: REMOTE   ·   TMUX: Ready   ·   Version: v26.7.14.2                   ║
                     ╚══════════════════════════════════════════════════════════════════════════════╝
                         OPS 
 ```
@@ -87,7 +87,7 @@ curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/m
 Use the immutable release URL when reproducibility matters:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/v26.7.14.1/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/v26.7.14.2/install.sh | bash
 ```
 
 ## Repackage
@@ -96,6 +96,7 @@ The launcher contains no credentials, private hostnames, private paths, IP
 addresses, or organization-specific repository names. Repackagers can set:
 
 - `JERVIS_AGENT_BRAND` for the centered product mark.
+- `JERVIS_AGENT_HOST_LABEL` for an explicit display-only hostname label.
 - `JERVIS_AGENT_QUESTION` for the operator prompt.
 - `JERVIS_AGENT_TMUX_SESSION` for the exact TMUX session name.
 - `JERVIS_AGENT_RUNNER_URL` and `JERVIS_AGENT_RUNNER_SHA256` for a self-hosted

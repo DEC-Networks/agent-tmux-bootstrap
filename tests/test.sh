@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # JERVIS Agent Installer behavioral and render tests
-# Version: v26.7.14.1
+# Version: v26.7.14.2
 
 set -euo pipefail
 
@@ -207,7 +207,7 @@ FAKE_SHELL
 
 cat > "$FAKE_BIN/hostname" <<'FAKE_HOSTNAME'
 #!/usr/bin/env bash
-printf 'remote-test\n'
+printf '%s\n' "${TEST_HOSTNAME:-remote-test}"
 FAKE_HOSTNAME
 
 chmod +x "$FAKE_BIN"/*
@@ -404,6 +404,14 @@ if grep -Fq 'Install Codex' <<< "$plain" \
     ok 'provider labels, TMUX capitalization, and OPS prompt'
 else
     bad 'provider labels, TMUX capitalization, and OPS prompt'
+fi
+
+pve_render="$(env TERM=xterm-256color JERVIS_LAUNCHER_COLUMNS=120 \
+    TEST_HOSTNAME=pve42 PATH="$FAKE_BIN:/usr/bin:/bin" "$RUNNER" --render | strip_ansi)"
+if grep -Fq 'Host: PVe42' <<< "$pve_render"; then
+    ok 'generic PVe hostname capitalization rule'
+else
+    bad 'generic PVe hostname capitalization rule'
 fi
 
 if python3 - "$README" <<'PY'

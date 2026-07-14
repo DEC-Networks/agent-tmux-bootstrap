@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # JERVIS Agent Installer runner
-# Version: v26.7.14.1
+# Version: v26.7.14.2
 # UI derived from the canonical JERVIS Launcher template v26.7.14.2.
 
 set -euo pipefail
 umask 077
 
-readonly RUNNER_VERSION="v26.7.14.1"
+readonly RUNNER_VERSION="v26.7.14.2"
 readonly DEFAULT_CODEX_INSTALLER_URL="https://chatgpt.com/codex/install.sh"
 readonly DEFAULT_CLAUDE_INSTALLER_URL="https://claude.ai/install.sh"
 readonly DEFAULT_GROK_INSTALLER_URL="https://x.ai/cli/install.sh"
@@ -71,6 +71,7 @@ Environment:
   JERVIS_AGENT_INSTALL_DEPS   Set to 0 to disable dependency installation
   JERVIS_AGENT_KEEP_SHELL     Set to 0 to close a direct install session
   JERVIS_AGENT_BRAND          Repackage the centered product mark
+  JERVIS_AGENT_HOST_LABEL     Override the display-only hostname label
   JERVIS_AGENT_QUESTION       Repackage the centered operator question
 
 Official installer URL overrides are available as JERVIS_CODEX_INSTALLER_URL,
@@ -172,6 +173,7 @@ append_forwarded_environment() {
         GROK_BIN_DIR
         GROK_CHANNEL
         JERVIS_AGENT_BRAND
+        JERVIS_AGENT_HOST_LABEL
         JERVIS_AGENT_QUESTION
         JERVIS_CODEX_INSTALLER_URL
         JERVIS_CLAUDE_INSTALLER_URL
@@ -353,8 +355,16 @@ authorization_notice() {
 
 display_hostname() {
     local host
+    if [[ -n "${JERVIS_AGENT_HOST_LABEL:-}" ]]; then
+        printf '%s' "$JERVIS_AGENT_HOST_LABEL"
+        return 0
+    fi
     host="$(hostname -s 2>/dev/null || hostname 2>/dev/null || printf 'REMOTE')"
-    printf '%s' "${host^^}"
+    if [[ "${host,,}" =~ ^pve([0-9]+)$ ]]; then
+        printf 'PVe%s' "${BASH_REMATCH[1]}"
+    else
+        printf '%s' "${host^^}"
+    fi
 }
 
 render_main_screen() {
