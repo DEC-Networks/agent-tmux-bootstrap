@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # JERVIS Agent Installer behavioral and render tests
-# Version: v26.7.14.2
+# Version: v26.7.14.3
 
 set -euo pipefail
 
@@ -109,6 +109,32 @@ FAKE_CLAUDE
 chmod +x "$HOME/.local/bin/claude"
 FAKE_CLAUDE_INSTALLER
         ;;
+    https://antigravity.google/cli/install.sh)
+        cat > "$output" <<'FAKE_AGY_INSTALLER'
+#!/usr/bin/env bash
+set -euo pipefail
+bin_dir="$HOME/.local/bin"
+while (( $# > 0 )); do
+    case "$1" in
+        -d|--dir) bin_dir="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+printf 'agy-installer-dir=%s\n' "$bin_dir" >> "$TEST_LOG"
+mkdir -p "$bin_dir"
+cat > "$bin_dir/agy" <<'FAKE_AGY'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == --version ]]; then
+    printf 'agy-version-check\n' >> "$TEST_LOG"
+    printf 'agy test\n'
+    exit 0
+fi
+printf 'agy-launch=%s\n' "$*" >> "$TEST_LOG"
+FAKE_AGY
+chmod +x "$bin_dir/agy"
+FAKE_AGY_INSTALLER
+        ;;
     https://x.ai/cli/install.sh)
         cat > "$output" <<'FAKE_GROK_INSTALLER'
 #!/usr/bin/env bash
@@ -128,9 +154,6 @@ printf 'grok-launch=%s\n' "$*" >> "$TEST_LOG"
 FAKE_GROK
 chmod +x "$bin_dir/grok"
 FAKE_GROK_INSTALLER
-        ;;
-    https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg)
-        printf 'fake-google-key\n' > "$output"
         ;;
     *)
         printf 'unexpected URL: %s\n' "$url" >&2
@@ -171,35 +194,6 @@ case "$subcommand" in
 esac
 FAKE_TMUX
 
-cat > "$FAKE_BIN/gpg" <<'FAKE_GPG'
-#!/usr/bin/env bash
-set -euo pipefail
-output=""
-while (( $# > 0 )); do
-    case "$1" in
-        --output) output="$2"; shift 2 ;;
-        *) shift ;;
-    esac
-done
-printf 'gpg-dearmor=%s\n' "$output" >> "$TEST_LOG"
-printf 'fake-keyring\n' > "$output"
-FAKE_GPG
-
-cat > "$FAKE_BIN/install" <<'FAKE_INSTALL'
-#!/usr/bin/env bash
-printf 'install-command=%s\n' "$*" >> "$TEST_LOG"
-FAKE_INSTALL
-
-cat > "$FAKE_BIN/apt-get" <<'FAKE_APT'
-#!/usr/bin/env bash
-printf 'apt-get=%s\n' "$*" >> "$TEST_LOG"
-FAKE_APT
-
-cat > "$FAKE_BIN/antigravity" <<'FAKE_ANTIGRAVITY'
-#!/usr/bin/env bash
-printf 'antigravity-launch=%s\n' "$*" >> "$TEST_LOG"
-FAKE_ANTIGRAVITY
-
 cat > "$FAKE_BIN/login-shell" <<'FAKE_SHELL'
 #!/usr/bin/env bash
 printf 'post-shell=%s\n' "$*" >> "$TEST_LOG"
@@ -217,7 +211,6 @@ run_env=(
     "HOME=$FAKE_HOME"
     "PATH=$FAKE_BIN:/usr/bin:/bin"
     "SHELL=$FAKE_BIN/login-shell"
-    "DISPLAY=:99"
     "CODEX_INSTALL_DIR=$FAKE_HOME/.local/bin"
     "GROK_BIN_DIR=$FAKE_HOME/.grok/bin"
     "JERVIS_AGENT_TEST_MODE=1"
@@ -251,22 +244,21 @@ assert_log 'grok-version-check' 'verifies Grok executable'
 assert_log 'grok-launch=--model test' 'launches Grok with forwarded arguments'
 
 : > "$TEST_LOG"
-TMUX='fake,1,0' "${run_env[@]}" "$RUNNER" --provider antigravity >/dev/null
-assert_log 'curl-url=https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg' 'uses Google Antigravity repository key'
-assert_log 'gpg-dearmor=' 'prepares Antigravity keyring'
-assert_log 'apt-get=update' 'refreshes apt for Antigravity'
-assert_log 'apt-get=install -y antigravity' 'installs official Antigravity package'
-assert_log 'antigravity-launch=' 'launches Antigravity when a graphical display exists'
+TMUX='fake,1,0' "${run_env[@]}" "$RUNNER" --provider agy -- --model test >/dev/null
+assert_log 'curl-url=https://antigravity.google/cli/install.sh' 'uses Google official AGY installer'
+assert_log "agy-installer-dir=$FAKE_HOME/.local/bin" 'installs AGY in its documented user bin directory'
+assert_log 'agy-version-check' 'verifies AGY executable'
+assert_log 'agy-launch=--model test' 'launches AGY with forwarded arguments'
 
 : > "$TEST_LOG"
-TMUX='fake,1,0' "${run_env[@]}" DISPLAY= "$RUNNER" --provider antigravity >/dev/null
-assert_no_log 'antigravity-launch=' 'does not pretend to launch Antigravity on a headless host'
+TMUX='fake,1,0' "${run_env[@]}" "$RUNNER" --provider gemini >/dev/null
+assert_log 'agy-launch=' 'maps the Gemini provider alias to AGY'
 
-if grep -Fq 'signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg' "$RUNNER" \
-    && grep -Fq 'Google' "$RUNNER"; then
-    ok 'pins Antigravity apt repository to its dedicated keyring'
+if grep -Fq 'https://antigravity.google/cli/install.sh' "$RUNNER" \
+    && ! grep -Eq 'apt\.pkg\.dev|/usr/bin/antigravity|WAYLAND_DISPLAY|DISPLAY' "$RUNNER"; then
+    ok 'AGY route excludes desktop and apt installer logic'
 else
-    bad 'pins Antigravity apt repository to its dedicated keyring'
+    bad 'AGY route excludes desktop and apt installer logic'
 fi
 
 : > "$TEST_LOG"
@@ -396,7 +388,7 @@ fi
 
 if grep -Fq 'Install Codex' <<< "$plain" \
     && grep -Fq 'Install Claude Code' <<< "$plain" \
-    && grep -Fq 'Install Antigravity' <<< "$plain" \
+    && grep -Fq 'Install AGY (Gemini)' <<< "$plain" \
     && grep -Fq 'Install Grok' <<< "$plain" \
     && grep -Fq 'TMUX: Ready' <<< "$plain" \
     && grep -Fq ' OPS ' <<< "$plain" \
@@ -444,6 +436,10 @@ fi
 printf ' CX' | TMUX='fake,1,0' "${run_env[@]}" JERVIS_NOTICE_ACKNOWLEDGED=0 "$RUNNER" >/dev/null
 assert_log 'codex-launch=' 'menu key routes to Codex installer'
 assert_log 'post-shell=-l' 'menu exit opens the TMUX shell'
+
+: > "$TEST_LOG"
+printf ' AX' | TMUX='fake,1,0' "${run_env[@]}" JERVIS_NOTICE_ACKNOWLEDGED=0 "$RUNNER" >/dev/null
+assert_log 'agy-launch=' 'menu key routes to AGY for Gemini'
 
 if grep -Fq "$FAKE_HOME/.local/bin" "$FAKE_HOME/.profile"; then
     ok 'persists terminal-agent PATH'

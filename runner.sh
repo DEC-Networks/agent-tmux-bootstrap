@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # JERVIS Agent Installer runner
-# Version: v26.7.14.2
+# Version: v26.7.14.3
 # UI derived from the canonical JERVIS Launcher template v26.7.14.2.
 
 set -euo pipefail
 umask 077
 
-readonly RUNNER_VERSION="v26.7.14.2"
+readonly RUNNER_VERSION="v26.7.14.3"
 readonly DEFAULT_CODEX_INSTALLER_URL="https://chatgpt.com/codex/install.sh"
 readonly DEFAULT_CLAUDE_INSTALLER_URL="https://claude.ai/install.sh"
+readonly DEFAULT_AGY_INSTALLER_URL="https://antigravity.google/cli/install.sh"
 readonly DEFAULT_GROK_INSTALLER_URL="https://x.ai/cli/install.sh"
-readonly ANTIGRAVITY_KEY_URL="https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg"
-readonly ANTIGRAVITY_APT_REPOSITORY="deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/ antigravity-debian main"
 
 CODEX_INSTALLER_URL="${JERVIS_CODEX_INSTALLER_URL:-$DEFAULT_CODEX_INSTALLER_URL}"
 CLAUDE_INSTALLER_URL="${JERVIS_CLAUDE_INSTALLER_URL:-$DEFAULT_CLAUDE_INSTALLER_URL}"
+AGY_INSTALLER_URL="${JERVIS_AGY_INSTALLER_URL:-$DEFAULT_AGY_INSTALLER_URL}"
 GROK_INSTALLER_URL="${JERVIS_GROK_INSTALLER_URL:-$DEFAULT_GROK_INSTALLER_URL}"
 TMUX_SESSION_NAME="${JERVIS_AGENT_TMUX_SESSION:-agent-install}"
 INSTALL_DEPENDENCIES="${JERVIS_AGENT_INSTALL_DEPS:-1}"
@@ -33,7 +33,6 @@ NOTICE_ONLY=0
 RUN_PROVIDER=""
 TEST_MODE="${JERVIS_AGENT_TEST_MODE:-0}"
 AGENT_ARGS=()
-TEMP_FILES=()
 FORWARDED_ENV=()
 
 TEAL=$'\033[38;2;41;219;204m'
@@ -41,7 +40,6 @@ BLUE=$'\033[38;2;59;130;246m'
 WHITE=$'\033[38;2;255;255;255m'
 LIGHT_GRAY=$'\033[38;2;232;232;236m'
 MUTED=$'\033[38;2;102;102;102m'
-AMBER=$'\033[38;2;245;158;11m'
 GREEN=$'\033[38;2;16;185;129m'
 RED=$'\033[38;2;239;68;68m'
 OPS=$'\033[1;38;2;8;20;24;48;2;41;219;204m'
@@ -60,8 +58,8 @@ inside TMUX.
 
 Options:
   --session NAME       TMUX session name (default: agent-install)
-  --provider NAME      Install codex, claude, antigravity, or grok directly
-  --no-install-deps    Do not install missing curl, tmux, or gpg packages
+  --provider NAME      Install codex, claude, agy, or grok directly
+  --no-install-deps    Do not install missing curl or tmux packages
   --no-shell           Do not retain a login shell after a direct install route
   --render             Render the main screen once without accepting input
   -h, --help           Show this help
@@ -75,7 +73,8 @@ Environment:
   JERVIS_AGENT_QUESTION       Repackage the centered operator question
 
 Official installer URL overrides are available as JERVIS_CODEX_INSTALLER_URL,
-JERVIS_CLAUDE_INSTALLER_URL, and JERVIS_GROK_INSTALLER_URL.
+JERVIS_CLAUDE_INSTALLER_URL, JERVIS_AGY_INSTALLER_URL, and
+JERVIS_GROK_INSTALLER_URL.
 USAGE
 }
 
@@ -95,11 +94,8 @@ enabled() {
 }
 
 cleanup() {
-    local file
     [[ -n "$DOWNLOADED_INSTALLER" ]] && rm -f "$DOWNLOADED_INSTALLER"
-    for file in "${TEMP_FILES[@]}"; do
-        [[ -n "$file" ]] && rm -f "$file"
-    done
+    return 0
 }
 
 trap cleanup EXIT
@@ -177,13 +173,12 @@ append_forwarded_environment() {
         JERVIS_AGENT_QUESTION
         JERVIS_CODEX_INSTALLER_URL
         JERVIS_CLAUDE_INSTALLER_URL
+        JERVIS_AGY_INSTALLER_URL
         JERVIS_GROK_INSTALLER_URL
     )
 
     FORWARDED_ENV=("PATH=$PATH" "HOME=$HOME")
     [[ -n "${SHELL:-}" ]] && FORWARDED_ENV+=("SHELL=$SHELL")
-    [[ -n "${DISPLAY:-}" ]] && FORWARDED_ENV+=("DISPLAY=$DISPLAY")
-    [[ -n "${WAYLAND_DISPLAY:-}" ]] && FORWARDED_ENV+=("WAYLAND_DISPLAY=$WAYLAND_DISPLAY")
     for name in "${names[@]}"; do
         value="${!name:-}"
         [[ -n "$value" ]] && FORWARDED_ENV+=("$name=$value")
@@ -378,7 +373,7 @@ render_main_screen() {
     host="$(clip_plain "$(display_hostname)" 18)"
     items=(
         "$(letter C 'Install Codex')"
-        "$(letter A 'Install Antigravity')"
+        "$(letter A 'Install AGY (Gemini)')"
         "$(letter L 'Install Claude Code')"
         "$(letter G 'Install Grok')"
     )
@@ -546,6 +541,26 @@ install_claude() {
     launch_terminal_agent 'Claude Code' "$executable"
 }
 
+install_agy() {
+    local bin_dir executable
+
+    download_installer 'AGY (Gemini)' "$AGY_INSTALLER_URL" || return 1
+    info "Running Google's Official AGY Installer..."
+    bin_dir="$HOME/.local/bin"
+    bash "$DOWNLOADED_INSTALLER" --dir "$bin_dir" || {
+        error "Google's AGY installer failed."
+        return 1
+    }
+    rm -f "$DOWNLOADED_INSTALLER"
+    DOWNLOADED_INSTALLER=""
+    activate_path "$bin_dir" || return 1
+    executable="$(resolve_executable agy "$bin_dir/agy")" || {
+        error "AGY was installed, but its executable could not be found."
+        return 1
+    }
+    launch_terminal_agent 'AGY (Gemini)' "$executable"
+}
+
 install_grok() {
     local bin_dir executable
 
@@ -566,70 +581,11 @@ install_grok() {
     launch_terminal_agent Grok "$executable"
 }
 
-install_antigravity() {
-    local key_file keyring_file source_file executable rc
-
-    [[ "$(uname -s)" == Linux ]] || {
-        error "Antigravity installation in this release supports Debian or Ubuntu Linux."
-        return 1
-    }
-    command -v apt-get >/dev/null 2>&1 || {
-        error "Antigravity's secure automated route currently supports apt-based Linux hosts only."
-        error "Google's RPM instructions disable package signature checking, so this launcher refuses that route."
-        return 1
-    }
-    ensure_command curl curl || return 1
-    ensure_command gpg gnupg || return 1
-
-    key_file="$(mktemp "${TMPDIR:-/tmp}/antigravity-key.XXXXXX")"
-    keyring_file="$(mktemp "${TMPDIR:-/tmp}/antigravity-keyring.XXXXXX")"
-    source_file="$(mktemp "${TMPDIR:-/tmp}/antigravity-source.XXXXXX")"
-    TEMP_FILES+=("$key_file" "$keyring_file" "$source_file")
-
-    info "Downloading Google's Antigravity Repository Key..."
-    curl --proto '=https' --tlsv1.2 -fsSL --output "$key_file" "$ANTIGRAVITY_KEY_URL" || {
-        error "Could not download Google's Antigravity repository key."
-        return 1
-    }
-    gpg --batch --yes --dearmor --output "$keyring_file" "$key_file" || {
-        error "Could not prepare Google's Antigravity repository key."
-        return 1
-    }
-    printf '%s\n' "$ANTIGRAVITY_APT_REPOSITORY" > "$source_file"
-
-    run_as_root install -d -m 0755 /etc/apt/keyrings || return 1
-    run_as_root install -m 0644 "$keyring_file" /etc/apt/keyrings/antigravity-repo-key.gpg || return 1
-    run_as_root install -m 0644 "$source_file" /etc/apt/sources.list.d/antigravity.list || return 1
-    info "Installing Antigravity From Google's Official apt Repository..."
-    run_as_root apt-get update || return 1
-    run_as_root apt-get install -y antigravity || return 1
-
-    executable="$(resolve_executable antigravity /usr/bin/antigravity)" || {
-        error "Antigravity was installed, but its executable could not be found."
-        return 1
-    }
-    info "Antigravity Installed Successfully."
-    if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
-        printf '  %sAntigravity Is A Desktop IDE And Cannot Open In This Headless TMUX Session.%s\n' "$AMBER" "$RESET"
-        info "Start A Graphical Session On This Host, Then Run: antigravity"
-        return 0
-    fi
-
-    info "Launching Antigravity In The Available Graphical Session..."
-    if "$executable" "${AGENT_ARGS[@]}"; then
-        return 0
-    else
-        rc=$?
-        error "Antigravity exited with status $rc."
-        return "$rc"
-    fi
-}
-
 run_provider() {
     case "${1,,}" in
         codex) install_codex ;;
         claude|claude-code) install_claude ;;
-        antigravity|anti-gravity) install_antigravity ;;
+        agy|gemini|antigravity|anti-gravity) install_agy ;;
         grok|grok-build) install_grok ;;
         *)
             error "Unknown provider: $1"
@@ -672,7 +628,7 @@ menu_loop() {
                 ;;
             a|A)
                 rc=0
-                run_provider antigravity || rc=$?
+                run_provider agy || rc=$?
                 pause_after_action
                 ;;
             g|G)

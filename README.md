@@ -1,4 +1,4 @@
-# JERVIS Agent Installer v26.7.14.2
+# JERVIS Agent Installer v26.7.14.3
 
 Open one remote-host launcher, choose an agent, install it from the vendor's
 official source, and start working inside TMUX.
@@ -19,12 +19,12 @@ That is the entire command. The launcher asks:
                     ║                        What Do You Want To Do, Boss?                         ║
                     ║                                                                              ║
                     ║   [C] Install Codex                      [L] Install Claude Code             ║
-                    ║   [A] Install Antigravity                [G] Install Grok                    ║
+                    ║   [A] Install AGY (Gemini)               [G] Install Grok                    ║
                     ║                                                                              ║
                     ╠══════════════════════════════════════════════════════════════════════════════╣
                     ║   [R] Reload Display                     [X] Exit To TMUX Shell              ║
                     ╠══════════════════════════════════════════════════════════════════════════════╣
-                    ║   Host: REMOTE   ·   TMUX: Ready   ·   Version: v26.7.14.2                   ║
+                    ║   Host: REMOTE   ·   TMUX: Ready   ·   Version: v26.7.14.3                   ║
                     ╚══════════════════════════════════════════════════════════════════════════════╝
                         OPS 
 ```
@@ -40,7 +40,7 @@ The live screen uses ANSI color. The plain rendering above shows its fixed
 4. Shows the JERVIS authorization notice and themed Agent Installer.
 5. Downloads the selected vendor's official installer over HTTPS.
 6. Runs the installer, activates and persists PATH, and verifies terminal CLIs.
-7. Launches Codex, Claude Code, or Grok immediately for login and work.
+7. Launches Codex, Claude Code, AGY, or Grok immediately for login and work.
 8. Leaves an interactive TMUX shell available after the installer exits.
 
 ## Official Sources
@@ -49,23 +49,20 @@ The live screen uses ANSI color. The plain rendering above shows its fixed
 |---|---|---|---|
 | `[C]` | OpenAI Codex CLI | `https://chatgpt.com/codex/install.sh` | Verifies and launches `codex` |
 | `[L]` | Anthropic Claude Code | `https://claude.ai/install.sh` | Verifies and launches `claude` |
-| `[A]` | Google Antigravity | Google's signed apt repository | Launches only when a graphical display exists |
+| `[A]` | Google AGY (Antigravity CLI for Gemini) | `https://antigravity.google/cli/install.sh` | Verifies and launches `agy` |
 | `[G]` | xAI Grok Build | `https://x.ai/cli/install.sh` | Verifies and launches `grok` |
 
 Vendor references: [OpenAI Codex](https://github.com/openai/codex),
 [Claude Code installation](https://code.claude.com/docs/en/installation),
-[Google Antigravity for Linux](https://antigravity.google/download/linux), and
+[Google Antigravity CLI](https://antigravity.google/docs/cli-getting-started), and
 [xAI Grok Build](https://docs.x.ai/build/overview).
 
-### Antigravity On Remote Hosts
+### AGY Is The Gemini Terminal Route
 
-Antigravity is a graphical IDE, not a terminal TUI. This release securely
-automates its official apt installation on Debian and Ubuntu. On a headless SSH
-host it installs the application and tells you to run `antigravity` from a
-graphical session. It never claims a GUI was launched inside TMUX.
-
-Google's current RPM instructions disable package signature checking. This
-launcher deliberately refuses to automate that weaker route.
+`agy` is Google's Antigravity CLI command and the terminal experience Google is
+transitioning consumer Gemini CLI users to. It runs directly inside TMUX. This
+route does not install the Antigravity desktop IDE or configure an apt
+repository.
 
 ## Direct Selection
 
@@ -75,8 +72,9 @@ Skip the menu while retaining the TMUX-first behavior:
 curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/main/install.sh | bash -s -- --provider codex
 ```
 
-Provider names are `codex`, `claude`, `antigravity`, and `grok`. Arguments after
-`--` are passed to the selected terminal agent:
+Provider names are `codex`, `claude`, `agy`, and `grok`. `gemini`,
+`antigravity`, and `anti-gravity` are aliases for `agy`. Arguments after `--`
+are passed to the selected terminal agent:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/main/install.sh | bash -s -- --provider codex -- --sandbox workspace-write
@@ -87,7 +85,7 @@ curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/m
 Use the immutable release URL when reproducibility matters:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/v26.7.14.2/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/DEC-Networks/agent-tmux-bootstrap/v26.7.14.3/install.sh | bash
 ```
 
 ## Repackage
@@ -101,8 +99,9 @@ addresses, or organization-specific repository names. Repackagers can set:
 - `JERVIS_AGENT_TMUX_SESSION` for the exact TMUX session name.
 - `JERVIS_AGENT_RUNNER_URL` and `JERVIS_AGENT_RUNNER_SHA256` for a self-hosted
   runner.
-- `JERVIS_CODEX_INSTALLER_URL`, `JERVIS_CLAUDE_INSTALLER_URL`, and
-  `JERVIS_GROK_INSTALLER_URL` for explicitly managed vendor mirrors.
+- `JERVIS_CODEX_INSTALLER_URL`, `JERVIS_CLAUDE_INSTALLER_URL`,
+  `JERVIS_AGY_INSTALLER_URL`, and `JERVIS_GROK_INSTALLER_URL` for explicitly
+  managed vendor mirrors.
 
 The defaults remain the official vendor endpoints. Every configured script URL
 must use HTTPS.
